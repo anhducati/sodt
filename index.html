@@ -20,12 +20,21 @@
     }
     .item {
       background: #f1f5f9;
-      padding: 12px;
+      padding: 12px 16px;
       border-radius: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
-    .copy-btn {
-      margin-left: 5px;
+    .phone-plate {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .info-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .toast-container {
       position: fixed;
@@ -84,7 +93,6 @@
 
       let allPrefixes = [];
       if (isRandomCarrier) {
-        // gom tất cả prefix
         Object.values(prefixes).forEach(arr => allPrefixes = allPrefixes.concat(arr));
       }
 
@@ -101,14 +109,18 @@
         const plateNum = `${platePfx} - ${numberPart}.${tailPart}`;
 
         const item = document.createElement("div");
-        item.className = "item d-flex justify-content-between align-items-center flex-wrap";
+        item.className = "item";
 
         item.innerHTML = `
-          <div>
-            📱 <strong>${phoneNum}</strong>
-            <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('${phoneNum}', 'SĐT')">Sao chép SĐT</button><br>
-            🚘 <strong>${plateNum}</strong>
-            <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('${plateNum}', 'Biển số')">Sao chép BS</button>
+          <div class="phone-plate">
+            <div class="info-group">
+              <span>📱 <strong>${phoneNum}</strong></span>
+              <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${phoneNum}', 'SĐT')">Sao chép SĐT</button>
+            </div>
+            <div class="info-group">
+              <span>🚘 <strong>${plateNum}</strong></span>
+              <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${plateNum}', 'Biển số')">Sao chép BS</button>
+            </div>
           </div>
         `;
         result.appendChild(item);
@@ -135,13 +147,10 @@
       `;
       toastContainer.appendChild(toast);
 
-      const bsToast = new bootstrap.Toast(toast, { delay: 1500 });
+      const bsToast = new bootstrap.Toast(toast, { delay: 2000 });
       bsToast.show();
 
-      // Tự xóa toast khỏi DOM sau khi tắt
-      toast.addEventListener('hidden.bs.toast', () => {
-        toast.remove();
-      });
+      toast.addEventListener('hidden.bs.toast', () => toast.remove());
     }
   </script>
 
