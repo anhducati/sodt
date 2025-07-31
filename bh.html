@@ -2,16 +2,16 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Quản lý Phiếu</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Import dữ liệu từ Excel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     .copied {
       background-color: #d1e7dd !important;
     }
     .toast-container {
       position: fixed;
-      top: 1rem;
+      bottom: 1rem;
       right: 1rem;
       z-index: 9999;
     }
@@ -19,139 +19,147 @@
 </head>
 <body class="p-4">
   <div class="container">
-    <h3 class="mb-4">Dữ liệu phiếu</h3>
-    <input type="file" id="excelFile" class="form-control mb-3" accept=".xlsx,.xls">
+    <h2 class="mb-3">Import Excel</h2>
+    <input type="file" id="fileInput" class="form-control mb-3" accept=".xlsx" />
     <button class="btn btn-danger mb-3" onclick="confirmReset()">Reset dữ liệu</button>
-    <div class="table-responsive">
-      <table id="dataTable" class="table table-bordered table-sm"></table>
-    </div>
-    <div class="toast-container">
-      <div class="toast align-items-center text-bg-success border-0" id="copyToast" role="alert">
-        <div class="d-flex">
-          <div class="toast-body">Đã sao chép!</div>
-        </div>
+    <table id="dataTable" class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>STT</th>
+          <th>Phiếu</th>
+          <th>Số khung</th>
+          <th>Ngày</th>
+          <th>KM</th>
+          <th>Số tiền</th>
+          <th>Copy</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="toast-container">
+    <div id="copyToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">Đã sao chép!</div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const copyToast = new bootstrap.Toast(document.getElementById('copyToast'));
-    let copiedValues = JSON.parse(localStorage.getItem('copiedValues') || '[]');
+    const kmRanges = {
+      1: [1500, 3800],
+      2: [6500, 7500],
+      3: [9500, 11000],
+      4: [13000, 15000],
+      5: [16500, 17500],
+      6: [19500, 21500],
+      7: [23500, 24500],
+      8: [26500, 27300],
+      9: [29000, 31000],
+    };
 
-    let globalData = JSON.parse(localStorage.getItem('savedData') || '[]');
+    const tienMapping = {
+      1: 25000,
+      2: 45000,
+      3: 70000,
+      4: 45000,
+      5: 45000,
+      6: 70000,
+      7: 45000,
+      8: 45000,
+      9: 70000,
+    };
 
-    document.addEventListener("DOMContentLoaded", () => {
-      if (globalData.length) renderTable();
-    });
+    const copiedSet = new Set();
 
-    document.getElementById('excelFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
+    document.getElementById("fileInput").addEventListener("change", handleFile);
+
+    function handleFile(event) {
+      const file = event.target.files[0];
       const reader = new FileReader();
-      reader.onload = function(event) {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const json = XLSX.utils.sheet_to_json(sheet);
 
-        let rows = json.slice(1);
-        globalData = rows.map((row, idx) => {
-          const dateParts = (row[0] || '').split('/');
-          const dd = parseInt(dateParts[0]) || 0;
-
-          const phieu = parseInt(row[5]);
-          let tien = 0;
-          if ([1].includes(phieu)) tien = 25000;
-          else if ([2, 4, 5, 7, 8].includes(phieu)) tien = 45000;
-          else if ([3, 6, 9].includes(phieu)) tien = 70000;
-
-          return {
-            date: row[0],
-            tenXe: row[1],
-            tenNguoi: row[2],
-            soKhung: row[3],
-            soPhieu: row[5],
-            dd: dd,
-            tien: tien
-          };
+        json.sort((a, b) => {
+          const getDay = (v) => parseInt(String(v).split("/")[0]);
+          return getDay(a.Ngày) - getDay(b.Ngày);
         });
 
-        globalData.sort((a, b) => a.dd - b.dd);
-        localStorage.setItem('savedData', JSON.stringify(globalData));
-        renderTable();
+        renderTable(json);
+        saveData(json);
       };
       reader.readAsArrayBuffer(file);
-    });
+    }
 
-    function renderTable() {
-      const table = document.getElementById('dataTable');
-      table.innerHTML = '';
+    function renderTable(data) {
+      const tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = "";
 
-      const headers = ['STT', 'Ngày', 'Tên xe', 'Tên người', 'Số khung', 'Số phiếu', 'Số tiền'];
-      const tr = document.createElement('tr');
-      headers.forEach(h => {
-        const th = document.createElement('th');
-        th.innerText = h;
-        tr.appendChild(th);
+      data.forEach((row, index) => {
+        const stt = index + 1;
+        const phieu = parseInt(row["Phiếu"]);
+        const km = getRandomKM(kmRanges[phieu] || [0, 0]);
+        const tien = tienMapping[phieu] || 0;
+        const rowId = `row-${stt}`;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${stt}</td>
+          <td>${row["Phiếu"]}</td>
+          <td id="khung-${stt}">${row["Số khung"]}</td>
+          <td>${row["Ngày"]}</td>
+          <td id="km-${stt}">${km}</td>
+          <td id="tien-${stt}">${tien}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="copyRow(${stt})">Sao chép</button>
+          </td>
+        `;
+
+        if (copiedSet.has(stt)) tr.classList.add("copied");
+        tbody.appendChild(tr);
       });
-      table.appendChild(tr);
+    }
 
-      globalData.forEach((row, idx) => {
-        const tr = document.createElement('tr');
-        const values = [
-          idx + 1,
-          row.date,
-          row.tenXe,
-          row.tenNguoi,
-          row.soKhung,
-          row.soPhieu,
-          row.tien
-        ];
+    function getRandomKM([min, max]) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 
-        values.forEach((value, colIdx) => {
-          const td = document.createElement('td');
-          td.textContent = value;
+    function copyRow(index) {
+      const khung = document.getElementById(`khung-${index}`).innerText;
+      const km = document.getElementById(`km-${index}`).innerText;
+      const tien = document.getElementById(`tien-${index}`).innerText;
 
-          // Chỉ thêm nút copy ở các cột có thể cần (Tên người, Số khung, Số phiếu)
-          if ([4, 5, 6].includes(colIdx)) {
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-sm btn-outline-primary';
-            btn.textContent = '📋';
-            btn.onclick = function () {
-              navigator.clipboard.writeText(value);
-              if (!copiedValues.includes(value)) {
-                copiedValues.push(value);
-                localStorage.setItem('copiedValues', JSON.stringify(copiedValues));
-              }
-              td.classList.add('copied');
-              copyToast.show();
-            }
+      const text = `${khung}\t${km}\t${tien}`;
+      navigator.clipboard.writeText(text);
 
-            if (copiedValues.includes(value)) {
-              td.classList.add('copied');
-            }
+      copiedSet.add(index);
+      document.querySelector(`#row-${index}`)?.classList.add("copied");
+      showToast();
+    }
 
-            td.appendChild(document.createTextNode(' '));
-            td.appendChild(btn);
-          }
+    function showToast() {
+      const toast = new bootstrap.Toast(document.getElementById("copyToast"));
+      toast.show();
+    }
 
-          tr.appendChild(td);
-        });
-        table.appendChild(tr);
-      });
+    function saveData(data) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "data.json";
+      a.click();
     }
 
     function confirmReset() {
       const pass = prompt("Nhập mật khẩu để reset:");
       if (pass === "0823163929") {
-        localStorage.removeItem('savedData');
-        localStorage.removeItem('copiedValues');
-        globalData = [];
-        copiedValues = [];
-        document.getElementById('dataTable').innerHTML = '';
-        document.getElementById('excelFile').value = '';
-        alert("Dữ liệu đã được reset!");
+        location.reload();
       } else {
         alert("Sai mật khẩu!");
       }
