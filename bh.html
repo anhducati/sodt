@@ -1,140 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Quản lý Phiếu</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    .copied { background-color: #d1e7dd !important; }
-    .toast-container { position: fixed; top: 1rem; right:1rem; z-index:9999; }
-  </style>
-</head>
-<body class="p-4">
-  <div class="container">
-    <h3 class="mb-4">Dữ liệu Phiếu</h3>
-    <input type="file" id="excelFile" class="form-control mb-3" accept=".xlsx,.xls"/>
-    <button class="btn btn-danger mb-3" onclick="confirmReset()">Reset dữ liệu</button>
-    <div class="table-responsive">
-      <table id="dataTable" class="table table-bordered table-sm"></table>
-    </div>
-    <div class="toast-container">
-      <div id="copyToast" class="toast align-items-center text-bg-success border-0" role="alert">
-        <div class="d-flex"><div class="toast-body">Đã sao chép!</div></div>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { getDatabase, ref, set, get, update, remove } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyBJj1VfJGJCIFPuxvAv9rvJ1IPa_M4FSLc",
-      authDomain: "chunganh-6a6a4.firebaseapp.com",
-      projectId: "chunganh-6a6a4",
-      storageBucket: "chunganh-6a6a4.appspot.com",
-      messagingSenderId: "915399377703",
-      appId: "1:915399377703:web:673aa6ff073f6f7a301f02",
-      databaseURL: "https://chunganh-6a6a4-default-rtdb.firebaseio.com"
-    };
-    const app = initializeApp(firebaseConfig);
-    getAnalytics(app);
-    const db = getDatabase(app);
-
-    const copyToast = new bootstrap.Toast(document.getElementById('copyToast'));
-
-    const kmRanges = {
-      1:[1500,3800],2:[6500,7500],3:[9500,11000],4:[13000,15000],
-      5:[16500,17500],6:[19500,21500],7:[23500,24500],
-      8:[26500,27300],9:[29000,31000]
-    };
-    const tienMap = {1:25000,2:45000,3:70000,4:45000,5:45000,6:70000,7:45000,8:45000,9:70000};
-
-    let jsonRows = [];
-
-    document.getElementById("excelFile").addEventListener("change", e => {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = async evt => {
-        const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, {type:"array"});
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        let rows = XLSX.utils.sheet_to_json(sheet, {header:1}).slice(1);
-        jsonRows = rows.map((row, idx) => {
-          const phieu = parseInt(row[5]);
-          const km = kmRanges[phieu]? (Math.floor(Math.random()*(kmRanges[phieu][1]-kmRanges[phieu][0]+1))+kmRanges[phieu][0]) : '';
-          return {
-            id: idx,
-            date: row[0], tenXe: row[1], tenNguoi: row[2],
-            soKhung: row[3], soPhieu: phieu,
-            km, tien: tienMap[phieu]||0,
-            dd: parseInt((row[0]||"").split("/")[0])||0
-          };
-        });
-        jsonRows.sort((a,b)=>a.dd-b.dd);
-        jsonRows.forEach((r,i)=>r.stt=i+1);
-        renderTable();
-        // lưu trạng thái chưa copy đến firebase nếu cần
-      };
-      reader.readAsArrayBuffer(file);
-    });
-
-    async function renderTable(){
-      const tbody = document.createElement("tbody");
-      const table = document.getElementById("dataTable");
-      table.innerHTML = `<thead><tr><th>STT</th><th>Ngày</th><th>Số khung</th><th>Phiếu</th><th>KM</th><th>Số tiền</th><th>Copy</th></tr></thead>`;
-      for(const row of jsonRows){
-        const tr = document.createElement("tr");
-        tr.id = `row-${row.id}`;
-        const cells = [row.stt,row.date,row.soKhung,row.soPhieu,row.km,row.tien];
-        cells.forEach((v,i)=>{
-          const td = document.createElement("td");
-          td.textContent = v;
-          tr.appendChild(td);
-        });
-        const tdBtn = document.createElement("td");
-        const btn = document.createElement("button");
-        btn.className = "btn btn-sm btn-outline-primary";
-        btn.textContent = "📋";
-        btn.onclick = async ()=>{
-          await navigator.clipboard.writeText(`${row.soKhung}\t${row.km}\t${row.tien}`);
-          await update(ref(db, 'copied/' + row.id), {copied:true});
-          tr.classList.add("copied");
-          copyToast.show();
-        };
-        tdBtn.appendChild(btn);
-        tr.appendChild(tdBtn);
-
-        // load trạng thái copy từ firebase
-        const snap = await get(ref(db, 'copied/' + row.id));
-        if(snap.exists() && snap.val().copied){
-          tr.classList.add("copied");
-        }
-
-        tbody.appendChild(tr);
-      }
-      table.appendChild(tbody);
-    }
-
-    async function confirmReset(){
-      const pw = prompt("Nhập mật khẩu để reset:");
-      if(pw=== "0823163929"){
-        await remove(ref(db, 'copied'));
-        jsonRows=[]; document.getElementById("dataTable").innerHTML="";
-      } else {
-        alert("Sai mật khẩu!");
-      }
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="vi">
-<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Quản lý Phiếu</title>
@@ -173,8 +39,27 @@
   <script>
     const copyToast = new bootstrap.Toast(document.getElementById('copyToast'));
     let copiedValues = JSON.parse(localStorage.getItem('copiedValues') || '[]');
-
     let globalData = JSON.parse(localStorage.getItem('savedData') || '[]');
+
+    // Quy tắc sinh km
+    const kmRanges = {
+      1: [1500, 3800],
+      2: [6500, 7500],
+      3: [9500, 11000],
+      4: [13000, 15000],
+      5: [16500, 17500],
+      6: [19500, 21500],
+      7: [23500, 24500],
+      8: [26500, 27300],
+      9: [29000, 31000]
+    };
+
+    function generateKm(soPhieu) {
+      const range = kmRanges[soPhieu];
+      if (!range) return '';
+      const [min, max] = range;
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
       if (globalData.length) renderTable();
@@ -193,21 +78,22 @@
         globalData = rows.map((row, idx) => {
           const dateParts = (row[0] || '').split('/');
           const dd = parseInt(dateParts[0]) || 0;
+          const soPhieu = parseInt(row[5]);
 
-          const phieu = parseInt(row[5]);
           let tien = 0;
-          if ([1].includes(phieu)) tien = 25000;
-          else if ([2, 4, 5, 7, 8].includes(phieu)) tien = 45000;
-          else if ([3, 6, 9].includes(phieu)) tien = 70000;
+          if ([1].includes(soPhieu)) tien = 25000;
+          else if ([2, 4, 5, 7, 8].includes(soPhieu)) tien = 45000;
+          else if ([3, 6, 9].includes(soPhieu)) tien = 70000;
 
           return {
             date: row[0],
             tenXe: row[1],
             tenNguoi: row[2],
             soKhung: row[3],
-            soPhieu: row[5],
+            soPhieu: soPhieu,
             dd: dd,
-            tien: tien
+            tien: tien,
+            soKm: generateKm(soPhieu)
           };
         });
 
@@ -222,7 +108,7 @@
       const table = document.getElementById('dataTable');
       table.innerHTML = '';
 
-      const headers = ['STT', 'Ngày', 'Tên xe', 'Tên người', 'Số khung', 'Số phiếu', 'Số tiền'];
+      const headers = ['STT', 'Ngày', 'Tên xe', 'Tên người', 'Số khung', 'Số phiếu', 'Số KM', 'Số tiền'];
       const tr = document.createElement('tr');
       headers.forEach(h => {
         const th = document.createElement('th');
@@ -240,6 +126,7 @@
           row.tenNguoi,
           row.soKhung,
           row.soPhieu,
+          row.soKm,
           row.tien
         ];
 
@@ -247,8 +134,8 @@
           const td = document.createElement('td');
           td.textContent = value;
 
-          // Chỉ thêm nút copy ở các cột có thể cần (Tên người, Số khung, Số phiếu)
-          if ([4, 5, 6].includes(colIdx)) {
+          // Cột có nút copy: Số khung, Số phiếu, Số KM, Số tiền (cột 4,5,6,7)
+          if ([4, 5, 6, 7].includes(colIdx)) {
             const btn = document.createElement('button');
             btn.className = 'btn btn-sm btn-outline-primary';
             btn.textContent = '📋';
