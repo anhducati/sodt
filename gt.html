@@ -155,7 +155,6 @@
 
   <script>
     // ====== CẤU HÌNH GIẢI THƯỞNG ======
-    // 👉 Sửa mảng này theo ý bạn
     const prizes = [
       "Giảm 50k",
       "Giảm 100k",
@@ -249,24 +248,28 @@
 
     // Tính giải trúng sau khi quay xong
     function handleSpinEnd() {
-      // Chuẩn hóa góc về [0, 360)
-      const normalized = ((totalRotation % 360) + 360) % 360;
-
       const count = prizes.length;
       const stepDeg = 360 / count;
 
-      // Góc mũi tên là 90° (trên cùng)
-      // Khi quay, góc trúng = 90° - góc quay
-      let pickedAngleDeg = 90 - normalized;
+      // Chuẩn hóa góc về [0, 360)
+      const normalized = ((totalRotation % 360) + 360) % 360;
+
+      // Mũi tên ở trên: góc 270° (tính từ trục ngang bên phải, quay theo chiều kim đồng hồ)
+      // Nội dung quay theo normalized (cùng chiều kim đồng hồ)
+      // => Góc "gốc" của giải trúng = 270° - normalized
+      let pickedAngleDeg = 270 - normalized;
+
+      // Chuẩn hóa góc về [0, 360)
       pickedAngleDeg = ((pickedAngleDeg % 360) + 360) % 360;
 
+      // Tính chỉ số giải
       const index = Math.floor(pickedAngleDeg / stepDeg);
       const prize = prizes[index];
 
       // Hiện kết quả
       resultText.innerHTML = `Kết quả: <span>${prize}</span>`;
 
-      // Đổi chữ "QUAY" ở giữa thành tên giải
+      // Đổi chữ trong vòng
       centerCircle.textContent = prize;
       centerCircle.style.fontSize = prize.length > 14 ? "12px" : "16px";
 
@@ -276,7 +279,7 @@
 
     spinBtn.addEventListener("click", spin);
 
-    // Lắng nghe khi animation kết thúc (chỉ 1 listener)
+    // Lắng nghe khi animation kết thúc
     wheelElement.addEventListener("transitionend", handleSpinEnd);
 
     // Khởi tạo
