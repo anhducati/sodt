@@ -72,6 +72,8 @@
       font-weight: 700;
       font-size: 18px;
       box-shadow: 0 0 18px rgba(250, 204, 21, 0.8);
+      text-align: center;
+      padding: 4px;
       pointer-events: none;
     }
 
@@ -153,7 +155,7 @@
 
   <script>
     // ====== CẤU HÌNH GIẢI THƯỞNG ======
-    // 👉 Bạn chỉ cần sửa mảng này cho phù hợp
+    // 👉 Sửa mảng này theo ý bạn
     const prizes = [
       "Giảm 50k",
       "Giảm 100k",
@@ -169,6 +171,8 @@
     const ctx = wheelCanvas.getContext("2d");
     const spinBtn = document.getElementById("spinBtn");
     const resultText = document.getElementById("resultText");
+    const centerCircle = document.querySelector(".center-circle");
+    const wheelElement = document.getElementById("wheel");
 
     // Kích thước canvas = kích thước khung
     function resizeCanvas() {
@@ -196,7 +200,7 @@
         const start = i * step;
         const end = start + step;
 
-        // Màu xen kẽ cho dễ nhìn
+        // Màu xen kẽ
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, radius - 4, start, end);
@@ -222,54 +226,58 @@
 
     // Animation quay
     let isSpinning = false;
-    let totalRotation = 0; // tổng độ đã quay (độ)
+    let totalRotation = 0; // tổng độ đã quay (deg)
 
     function spin() {
       if (isSpinning) return;
       isSpinning = true;
       spinBtn.disabled = true;
       resultText.textContent = "Đang quay...";
+      centerCircle.textContent = "ĐANG QUAY";
+      centerCircle.style.fontSize = "14px";
 
       // Số vòng quay (5–8 vòng) + góc ngẫu nhiên
-      const spins = 5 + Math.floor(Math.random() * 4); // 5,6,7,8 vòng
+      const spins = 5 + Math.floor(Math.random() * 4); // 5,6,7,8
       const extraDegrees = Math.random() * 360;
       const spinDeg = spins * 360 + extraDegrees;
 
       totalRotation += spinDeg;
 
-      const wheelElement = document.getElementById("wheel");
       wheelElement.style.transition = "transform 4s cubic-bezier(0.15, 0.75, 0.25, 1)";
       wheelElement.style.transform = `rotate(${totalRotation}deg)`;
     }
 
     // Tính giải trúng sau khi quay xong
     function handleSpinEnd() {
-      // Chuẩn hóa góc về [0,360)
+      // Chuẩn hóa góc về [0, 360)
       const normalized = ((totalRotation % 360) + 360) % 360;
 
       const count = prizes.length;
       const stepDeg = 360 / count;
 
       // Góc mũi tên là 90° (trên cùng)
-      // Khi quay, góc trúng = 90° - góc quay (theo hướng ngược kim đồng hồ)
+      // Khi quay, góc trúng = 90° - góc quay
       let pickedAngleDeg = 90 - normalized;
       pickedAngleDeg = ((pickedAngleDeg % 360) + 360) % 360;
 
       const index = Math.floor(pickedAngleDeg / stepDeg);
       const prize = prizes[index];
 
+      // Hiện kết quả
       resultText.innerHTML = `Kết quả: <span>${prize}</span>`;
+
+      // Đổi chữ "QUAY" ở giữa thành tên giải
+      centerCircle.textContent = prize;
+      centerCircle.style.fontSize = prize.length > 14 ? "12px" : "16px";
+
       isSpinning = false;
       spinBtn.disabled = false;
     }
 
     spinBtn.addEventListener("click", spin);
 
-    // Lắng nghe khi animation kết thúc
-    wheelCanvas.addEventListener("transitionend", handleSpinEnd);
-
-    // Do canvas không nhận transitionend, nên nghe trên parent thật của transform:
-    document.getElementById("wheel").addEventListener("transitionend", handleSpinEnd);
+    // Lắng nghe khi animation kết thúc (chỉ 1 listener)
+    wheelElement.addEventListener("transitionend", handleSpinEnd);
 
     // Khởi tạo
     resizeCanvas();
