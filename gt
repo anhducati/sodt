@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vòng Quay May Mắn - Chung Anh</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #1e293b, #020617);
+      color: #e5e7eb;
+    }
+
+    .wheel-wrapper {
+      text-align: center;
+    }
+
+    .wheel-container {
+      position: relative;
+      width: 420px;
+      height: 420px;
+      margin: 0 auto 24px auto;
+    }
+
+    /* Vòng quay */
+    #wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 8px solid #e5e7eb;
+      box-shadow: 0 0 30px rgba(15,23,42,0.8);
+      background: #020617;
+      transition: transform 4s cubic-bezier(0.15, 0.75, 0.25, 1);
+    }
+
+    /* Mũi tên trên cùng */
+    .pointer {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid #facc15;
+      filter: drop-shadow(0 0 8px #fbbf24);
+    }
+
+    .center-circle {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      background: #facc15;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1f2937;
+      font-weight: 700;
+      font-size: 18px;
+      box-shadow: 0 0 18px rgba(250, 204, 21, 0.8);
+      pointer-events: none;
+    }
+
+    button#spinBtn {
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      box-shadow: 0 10px 20px rgba(34,197,94,0.35);
+      transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+    }
+
+    button#spinBtn:hover:enabled {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+      box-shadow: 0 14px 30px rgba(34,197,94,0.45);
+    }
+
+    button#spinBtn:active:enabled {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 6px 14px rgba(34,197,94,0.3);
+    }
+
+    button#spinBtn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .result {
+      margin-top: 16px;
+      font-size: 18px;
+      min-height: 26px;
+    }
+
+    .result span {
+      font-weight: 700;
+      color: #fbbf24;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 480px) {
+      .wheel-container {
+        width: 320px;
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wheel-wrapper">
+    <div class="title">Vòng Quay May Mắn</div>
+    <div class="subtitle">Nhấn QUAY &amp; chờ kết quả…</div>
+
+    <div class="wheel-container">
+      <div class="pointer"></div>
+      <canvas id="wheel"></canvas>
+      <div class="center-circle">QUAY</div>
+    </div>
+
+    <button id="spinBtn">🎰 QUAY NGAY</button>
+    <div class="result" id="resultText"></div>
+  </div>
+
+  <script>
+    // ====== CẤU HÌNH GIẢI THƯỞNG ======
+    // 👉 Bạn chỉ cần sửa mảng này cho phù hợp
+    const prizes = [
+      "Giảm 50k",
+      "Giảm 100k",
+      "Quà Tặng Áo Mưa",
+      "Bình Dầu Miễn Phí",
+      "Rửa Xe Free",
+      "Phiếu Bốc Thăm",
+      "Thêm 1 Lần Quay",
+      "Chúc May Mắn Lần Sau"
+    ];
+
+    const wheelCanvas = document.getElementById("wheel");
+    const ctx = wheelCanvas.getContext("2d");
+    const spinBtn = document.getElementById("spinBtn");
+    const resultText = document.getElementById("resultText");
+
+    // Kích thước canvas = kích thước khung
+    function resizeCanvas() {
+      const parent = wheelCanvas.parentElement;
+      const size = parent.clientWidth;
+      wheelCanvas.width = size;
+      wheelCanvas.height = size;
+      drawWheel();
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+
+    // Vẽ vòng quay
+    function drawWheel() {
+      const size = wheelCanvas.width;
+      const radius = size / 2;
+      const cx = radius;
+      const cy = radius;
+      const count = prizes.length;
+      const step = (2 * Math.PI) / count;
+
+      ctx.clearRect(0, 0, size, size);
+
+      for (let i = 0; i < count; i++) {
+        const start = i * step;
+        const end = start + step;
+
+        // Màu xen kẽ cho dễ nhìn
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius - 4, start, end);
+        ctx.closePath();
+        ctx.fillStyle = i % 2 === 0 ? "#0ea5e9" : "#6366f1";
+        ctx.fill();
+        ctx.strokeStyle = "#020617";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Text
+        ctx.save();
+        ctx.translate(cx, cy);
+        const angle = start + step / 2;
+        ctx.rotate(angle);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#f9fafb";
+        ctx.font = `${Math.max(12, radius / 12)}px system-ui`;
+        ctx.fillText(prizes[i], radius - 20, 4);
+        ctx.restore();
+      }
+    }
+
+    // Animation quay
+    let isSpinning = false;
+    let totalRotation = 0; // tổng độ đã quay (độ)
+
+    function spin() {
+      if (isSpinning) return;
+      isSpinning = true;
+      spinBtn.disabled = true;
+      resultText.textContent = "Đang quay...";
+
+      // Số vòng quay (5–8 vòng) + góc ngẫu nhiên
+      const spins = 5 + Math.floor(Math.random() * 4); // 5,6,7,8 vòng
+      const extraDegrees = Math.random() * 360;
+      const spinDeg = spins * 360 + extraDegrees;
+
+      totalRotation += spinDeg;
+
+      const wheelElement = document.getElementById("wheel");
+      wheelElement.style.transition = "transform 4s cubic-bezier(0.15, 0.75, 0.25, 1)";
+      wheelElement.style.transform = `rotate(${totalRotation}deg)`;
+    }
+
+    // Tính giải trúng sau khi quay xong
+    function handleSpinEnd() {
+      // Chuẩn hóa góc về [0,360)
+      const normalized = ((totalRotation % 360) + 360) % 360;
+
+      const count = prizes.length;
+      const stepDeg = 360 / count;
+
+      // Góc mũi tên là 90° (trên cùng)
+      // Khi quay, góc trúng = 90° - góc quay (theo hướng ngược kim đồng hồ)
+      let pickedAngleDeg = 90 - normalized;
+      pickedAngleDeg = ((pickedAngleDeg % 360) + 360) % 360;
+
+      const index = Math.floor(pickedAngleDeg / stepDeg);
+      const prize = prizes[index];
+
+      resultText.innerHTML = `Kết quả: <span>${prize}</span>`;
+      isSpinning = false;
+      spinBtn.disabled = false;
+    }
+
+    spinBtn.addEventListener("click", spin);
+
+    // Lắng nghe khi animation kết thúc
+    wheelCanvas.addEventListener("transitionend", handleSpinEnd);
+
+    // Do canvas không nhận transitionend, nên nghe trên parent thật của transform:
+    document.getElementById("wheel").addEventListener("transitionend", handleSpinEnd);
+
+    // Khởi tạo
+    resizeCanvas();
+  </script>
+</body>
+</html>
